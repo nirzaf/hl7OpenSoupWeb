@@ -1,42 +1,52 @@
 import { type NextRequest, NextResponse } from "next/server"
-
-// Mock data - replace with MongoDB integration
-const mockMessages = [
-  // ... same mock data as in route.ts
-]
+import { getCollection } from "@/lib/mongodb"
+import { ObjectId } from "mongodb"
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const messageData = await request.json()
-    const messageIndex = mockMessages.findIndex((m) => m._id === params.id)
+    const collection = await getCollection("messages")
+    
+    const result = await collection.findOneAndUpdate(
+      { _id: new ObjectId(params.id) },
+      { 
+        $set: {
+          ...messageData,
+          updatedAt: new Date()
+        }
+      },
+      { returnDocument: 'after' }
+    )
 
-    if (messageIndex === -1) {
+    if (!result) {
       return NextResponse.json({ error: "Message not found" }, { status: 404 })
     }
 
-    mockMessages[messageIndex] = {
-      ...mockMessages[messageIndex],
-      ...messageData,
-      updatedAt: new Date(),
+    const updatedMessage = {
+      ...result,
+      _id: result._id.toString()
     }
 
-    return NextResponse.json(mockMessages[messageIndex])
+    return NextResponse.json(updatedMessage)
   } catch (error) {
+    console.error("Failed to update message:", error)
     return NextResponse.json({ error: "Failed to update message" }, { status: 500 })
   }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const messageIndex = mockMessages.findIndex((m) => m._id === params.id)
+    const collection = await getCollection("messages")
+    
+    const result = await collection.deleteOne({ _id: new ObjectId(params.id) })
 
-    if (messageIndex === -1) {
+    if (result.deletedCount === 0) {
       return NextResponse.json({ error: "Message not found" }, { status: 404 })
     }
 
-    mockMessages.splice(messageIndex, 1)
     return NextResponse.json({ success: true })
   } catch (error) {
+    console.error("Failed to delete message:", error)
     return NextResponse.json({ error: "Failed to delete message" }, { status: 500 })
   }
 }
