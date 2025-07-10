@@ -1,130 +1,109 @@
-# **Project Requirements and Guidelines: Advanced HL7 Viewer and Editor**
-
----
+# Web-Based HL7 Message Analysis & Management Platform
 
 ## 1. Project Overview & Purpose
 
-This project will create a web-based, advanced **HL7 Viewer and Editor**. The primary goal is to provide healthcare IT professionals, interface analysts, and developers with a powerful tool to view, edit, validate, and transform HL7 v2.x messages. The application will simplify the process of working with complex HL7 data by offering an intuitive user interface that highlights message segments, validates against standard and custom schemas (such as the UK's ITK for NHS), and allows for seamless data manipulation and conversion. The desired end state is a robust, user-friendly platform that enhances productivity and accuracy when managing HL7 message workflows.
-
----
+This project develops a modern, web-based application for viewing, editing, and managing Health Level Seven (HL7) messages. It addresses the need for a more accessible, collaborative, and platform-independent alternative to traditional desktop-based HL7 tools. By leveraging a modern web stack, the platform will provide healthcare IT professionals, developers, and analysts with a fast, intuitive, and feature-rich environment for HL7 data interaction. The desired end state is a deployed web application that serves as a centralized hub for HL7 message parsing, validation, anonymization, and analysis.
 
 ## 2. Key Objectives
 
-* **Develop an intuitive HL7 message viewer and editor** with syntax highlighting and direct content manipulation.
-* **Implement a comprehensive validation engine** that supports standard HL7 schemas and allows for the import of custom schemas (e.g., UK ITK).
-* **Enable robust message management features**, including creating, saving, copying, and filtering of multiple messages.
-* **Provide powerful data transformation capabilities** to convert HL7 messages to and from JSON, XML, and CSV formats.
-* **Ensure seamless data persistence** by enabling messages to be written to and read from a MongoDB database.
+- **Develop Core Viewing & Editing Capabilities**: Implement a user-friendly interface to parse, translate, and display HL7 messages in a human-readable format, with capabilities for direct in-line editing and validation.
 
----
+- **Establish Robust Message Management**: Create a secure and searchable repository for storing, retrieving, and comparing HL7 messages, backed by a flexible database.
+
+- **Provide Actionable Data Insights**: Build a dashboard to generate and visualize statistics from stored messages, offering insights into message volume, types, and trends.
+
+- **Enable Basic System Integration**: Deliver a foundational RESTful API to allow for programmatic interaction, enabling integration with other modern web services.
 
 ## 3. Scope of Work
 
-### **In-Scope:**
+### In-Scope:
 
-* **HL7 Message Rendering**: Display HL7 messages in a structured, easy-to-read format with clear segment and field delineation.
-* **Hyperlink Highlighting**: Automatically identify and hyperlink key message components for quick navigation and analysis.
-* **Message Validation**:
-    * Validate messages against a range of HL7 v2.x versions (2.1 through 2.9).
-    * Support for importing and validating against custom or third-party HL7 schemas (e.g., UK's ITK for NHS).
-* **Message Editing and Management**:
-    * Create new HL7 messages from scratch or based on templates.
-    * Save and copy existing messages.
-    * Edit the contents of any segment or field within a message.
-    * Apply edits to multiple selected messages simultaneously.
-* **Message Filtering**: Provide a robust filtering mechanism to quickly find messages based on their content or metadata.
-* **Table Lookups**:
-    * Implement functionality to perform table lookups within a message.
-    * Allow users to customize and manage these lookup tables.
-* **Custom Rules Engine**:
-    * Enable users to create, edit, and export custom highlighting and validation rules.
-* **Data Transformation**:
-    * Export HL7 messages to JSON, XML, and CSV (Excel) formats.
-    * Import data from JSON, XML, and CSV to create or update HL7 messages.
-* **Database Integration**:
-    * Persist and retrieve HL7 messages from a MongoDB database.
-* **Workflow Activities**: Provide capabilities for defining and executing custom workflow activities related to message manipulation.
+#### Message Viewing & Interpretation:
+- Parsing and translation of raw HL7 messages into a human-readable, structured format
+- Interactive highlighting that links translated fields to their corresponding raw message segments
+- A grid-based view for displaying message segments and fields
+- Syntax and color-coding for raw HL7 message text to improve readability
 
-### **Out-of-Scope:**
+#### Message Editing & Validation:
+- Direct editing of message data within the UI
+- Integration of HL7 lookup tables for field-level assistance (e.g., dropdowns for standard codes)
+- Backend validation of messages against the HL7 standard
+- A feature to anonymize messages by removing Personally Identifiable Information (PII)
 
-* **Real-time Message Transmission**: This tool is for viewing, editing, and analysis, not for real-time sending or receiving of HL7 messages over a network (e.g., via MLLP).
-* **HL7 v3 and FHIR Support**: The initial version will exclusively support HL7 v2.x. Support for other standards like HL7 v3 or FHIR is not included.
-* **User Authentication and Authorization**: A comprehensive user management system with roles and permissions is not part of this initial scope.
-* **Advanced Reporting and Analytics**: While basic filtering is included, detailed analytics and reporting on message data are not.
-* **Direct EMR/EHR Integration**: The application will not directly integrate with Electronic Medical Record or Electronic Health Record systems.
+#### Message Management & Analysis:
+- Secure storage of HL7 messages (raw and parsed) in a central database
+- A "diff" tool to compare two messages and highlight differences
+- Advanced search functionality to query messages based on specific field values
+- A statistics dashboard with visualizations (e.g., charts) for message analytics
 
----
+#### API & Accessibility:
+- A RESTful API for programmatic access (e.g., uploading, retrieving messages) using API key authentication
+- In-browser clipboard support for easy pasting of HL7 data
+- A pre-loaded library of sample HL7 messages for demonstration and training
 
 ## 4. Target Audience / End-Users
 
-* **Primary Audience: Healthcare Interface Analysts and Developers**: These users require a powerful tool to troubleshoot, validate, and manipulate HL7 messages during interface development and maintenance. They need detailed control over message structure and content.
-* **Secondary Audience: Healthcare IT Support Staff**: This group needs an easy-to-use tool to view and understand the content of HL7 messages for support and troubleshooting purposes. They will benefit from the clear message rendering and validation features.
-* **Tertiary Audience: Quality Assurance and Testing Teams**: These users will leverage the tool to create test data, validate message formats against specific requirements, and ensure the quality of HL7 interfaces.
-
----
+- **Primary Audience**: Healthcare Integration Analysts & Developers who need to troubleshoot, validate, and test HL7 interfaces
+- **Secondary Audience**: Hospital IT Staff & System Administrators who manage health information systems and need to inspect message logs or data quality
+- **Tertiary Audience**: Quality Assurance (QA) Engineers who test applications that produce or consume HL7 data
 
 ## 5. Key Deliverables
 
-* A fully functional **Next.js web application** for viewing and editing HL7 messages.
-* A documented **RESTful API** for message manipulation.
-* A **MongoDB schema** for storing HL7 messages and associated user-defined rules.
-* A **user guide** detailing the features and functionalities of the application.
-* The ability to import **custom HL7 validation schemas**.
-
----
+- A deployed, production-ready Next.js web application with all in-scope features
+- A documented RESTful API that allows authenticated users to interact with the system programmatically
+- A database schema for storing users, messages, configurations, and HL7 lookup tables
+- User-facing documentation or tooltips explaining how to use the core features of the application
+- A curated set of sample HL7 messages integrated into the application
 
 ## 6. High-Level Requirements
 
-### **Functional Requirements:**
+### Functional Requirements:
+- The system must allow users to create an account and log in
+- The system must allow users to paste or upload raw HL7 files
+- The system shall parse any valid HL7 v2.x message into a structured JSON format
+- The system must render the parsed message in both a raw text view and a structured grid view
+- Users must be able to edit fields in the grid view and save the changes as a new version or overwrite the existing message
+- The system must provide a function to create an anonymized copy of a message
+- The system must allow searching of the message repository by criteria such as Patient Name, Message Type (e.g., ADT^A04), or other specific identifiers
 
-* The system must parse and render all specified **HL7 v2.x message versions**.
-* The system must allow for the creation of a new HL7 message from a blank slate.
-* Users must be able to upload an HL7 file for viewing and editing.
-* The system must provide **in-line editing** for all message segments and fields.
-* Users must be able to save edited messages to the MongoDB database.
-* The system must implement a **search and filter functionality** to query messages based on message type, sending facility, or content within a specific segment.
-* The system must provide options to **export a given HL7 message** to JSON, XML, or CSV format.
-* The system must allow users to define and import custom validation rule sets.
+### Non-Functional Requirements:
+- **Performance**: Message parsing and rendering should complete within 2 seconds for typical message sizes (<10KB). Search queries should return results in under 3 seconds
+- **Scalability**: The architecture must support at least 100 concurrent users and a database of over 1 million HL7 messages without significant performance degradation
+- **Reliability**: The application shall have an uptime of 99.9%. All data storage operations must be atomic and handle failures gracefully
+- **Usability**: The user interface must be intuitive, requiring minimal training for users familiar with HL7 concepts
 
-### **Non-Functional Requirements:**
+### User & UI/UX Requirements:
+- The UI must be responsive and fully functional on modern desktop web browsers (Chrome, Firefox, Edge, Safari)
+- Interactive elements (hovers, clicks) must provide immediate visual feedback
+- Validation errors and system status (e.g., "Saving...", "Success") must be clearly communicated to the user
+- The design shall be clean and professional, prioritizing readability of complex data
 
-* **Performance**: The application should load and render large HL7 messages (up to 1MB) within 2-3 seconds. Filtering and search operations on a database of 100,000 messages should complete in under 5 seconds.
-* **Scalability**: The application architecture should be able to handle a growing number of users and a large volume of stored HL7 messages without significant degradation in performance.
-* **Reliability**: The application should be highly available, with a target uptime of 99.9%. Data persistence and transformation operations must be atomic and error-handled to prevent data corruption.
-* **Usability**: The user interface should be intuitive and require minimal training for users familiar with HL7 concepts.
+### Data Requirements:
+- The system must store both the original raw HL7 string and its parsed JSON representation
+- The system will store standard HL7 code sets (e.g., gender, message types) in a dedicated collection for use in dropdowns and validation
+- All message documents in the database must be associated with the user who uploaded them and include metadata such as creation and modification timestamps
 
-### **User & UI/UX Requirements:**
+### Security & Compliance:
+- User authentication must be secure, with passwords hashed and salted
+- All data transmission between the client and server must be encrypted using HTTPS
+- Given the potential for Protected Health Information (PHI), the system must be designed with HIPAA compliance in mind (e.g., audit trails for data access, strong access controls), even if formal certification is out of scope
+- The anonymization feature must effectively remove all standard PII fields as defined by HIPAA's Safe Harbor method
 
-* The UI must present HL7 messages in a **color-coded, hierarchical, or tabular view** for easy readability.
-* Each segment, field, and component of the HL7 message must be clearly delineated.
-* Validation errors and warnings must be clearly highlighted in the UI, with descriptive tooltips explaining the issue.
-* The application must have a clean, modern, and **responsive design** that works well on standard desktop screen sizes.
+## 7. Recommended Tech Stack
 
-### **Data Requirements:**
-
-* The system will store HL7 messages in their raw text format, along with metadata such as creation date, last modified date, and user-defined tags.
-* Custom validation rules, highlighting preferences, and table lookups will be stored as structured documents in MongoDB.
-* The application must support **UTF-8 character encoding**.
-
-### **Security & Compliance:**
-
-* As the application may handle Protected Health Information (PHI), all data in transit and at rest must be **encrypted**.
-* The application should be designed with **HIPAA security principles** in mind, even if formal certification is out of scope for the initial version.
-* There should be no hard-coded credentials or sensitive information in the frontend code.
-
----
-
-## 7. Recommended Tech Stack 💻
-
-* **Full-Stack Framework**: **Next.js** - The application will be built as a full-stack monolith using Next.js. This includes using Next.js for the React-based frontend and **Next.js API Routes** for the server-side logic and RESTful API endpoints. This simplifies development and deployment into a single, unified framework.
-* **Database**: **MongoDB** - A NoSQL database that offers a flexible schema, making it well-suited for storing HL7 messages and various user-defined configurations.
-* **HL7 Parsing Library**: A well-maintained Node.js library for parsing and manipulating HL7 messages (e.g., `node-hl7-parser`) will be integrated into the Next.js backend.
-
----
+- **Frontend Framework**: Next.js (React) - Chosen for its server-side rendering (SSR) capabilities for fast initial page loads, API routes for backend logic, and a rich ecosystem of UI components
+- **Database**: MongoDB - A NoSQL database ideal for storing schemaless or semi-structured data like parsed HL7 messages (JSON). Its powerful querying and aggregation framework are well-suited for the search and statistics features
+- **HL7 Parsing Library**: A Node.js compatible library (e.g., node-hl7-parser) to handle the backend parsing logic within the Next.js API routes
+- **UI Component Library**: A library like Material-UI (MUI) or Tailwind CSS to ensure a consistent and professional look-and-feel
+- **Data Visualization**: A charting library like Chart.js or D3.js for rendering the statistics dashboard
 
 ## 8. Known Constraints & Assumptions
 
-* **Technology Stack**: The project will be developed using a unified Next.js framework and MongoDB as specified.
-* **Deployment Environment**: This document assumes a standard cloud-based deployment (e.g., AWS, Vercel, Azure, Google Cloud) but does not specify the infrastructure details.
-* **Third-Party Data**: The availability and format of the UK's ITK for NHS schemas are assumed to be accessible for integration.
-* **Initial Data**: The system will initially be populated with a sample set of HL7 messages for demonstration and testing purposes.
+### Assumptions:
+- This document outlines a new web application and does not involve migrating data from an existing HL7 Soup desktop application
+- The primary target users have a working knowledge of the HL7 standard
+- The project budget and timeline will accommodate the development of the features defined in the 'In-Scope' section
+
+### Constraints:
+- The application will be web-based only and will not have a corresponding desktop version
+- The application must be built using the specified Next.js and MongoDB stack
