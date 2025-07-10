@@ -5,6 +5,7 @@ import { Activity, Database, FileText, Settings } from "lucide-react"
 import { ValidationConfiguration } from "@/components/validation-configuration"
 import { DataTransformation } from "@/components/data-transformation"
 import { RulesEngine } from "@/components/rules-engine"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function HomePage() {
   return (
@@ -22,6 +23,7 @@ export default function HomePage() {
             <div className="flex items-center space-x-4">
               <div className="text-sm text-muted-foreground">Connected to MongoDB</div>
               <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+              <ThemeToggle />
             </div>
           </div>
         </div>
