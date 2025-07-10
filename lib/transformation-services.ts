@@ -1,5 +1,5 @@
-import { convert } from 'xml-js'
-import { json2csv } from 'json-2-csv'
+import * as xmljs from 'xml-js'
+import * as json2csv from 'json-2-csv'
 import type { HL7Message, TransformationOptions } from '@/types/hl7'
 
 export interface TransformationResult {
@@ -41,7 +41,7 @@ export class XMLConversionService {
         }
       }
 
-      const xmlString = convert.js2xml(xmlData, xmlOptions)
+      const xmlString = xmljs.js2xml(xmlData, xmlOptions)
       
       return {
         success: true,
@@ -75,7 +75,7 @@ export class XMLConversionService {
         elementsKey: '_elements'
       }
 
-      const result = convert.xml2js(xmlData, jsonOptions)
+      const result = xmljs.xml2js(xmlData, jsonOptions)
       
       // Extract the HL7Message content if it exists
       const hl7Data = result.HL7Message || result
@@ -119,7 +119,7 @@ export class CSVConversionService {
         emptyFieldValue: ''
       }
 
-      const csvString = json2csv(flattenedData, csvOptions)
+      const csvString = json2csv.json2csv(flattenedData, csvOptions)
       
       return {
         success: true,
@@ -141,15 +141,18 @@ export class CSVConversionService {
   static fromCSV(csvData: string): TransformationResult {
     try {
       // Parse CSV to JSON array
-      const jsonArray = json2csv.csv2json(csvData, {
-        delimiter: {
-          field: ',',
-          wrap: '"',
-          eol: '\n'
-        },
-        trimHeaderFields: true,
-        trimFieldValues: true
+      // For now, we'll implement a simple CSV parser
+      const lines = csvData.split('\n')
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
+      const jsonArray = lines.slice(1).filter(line => line.trim()).map(line => {
+        const values = line.split(',').map(v => v.trim().replace(/"/g, ''))
+        const obj: any = {}
+        headers.forEach((header, index) => {
+          obj[header] = values[index] || ''
+        })
+        return obj
       })
+
 
       // Reconstruct HL7 structure from flattened CSV data
       const hl7Data = this.reconstructHL7Data(jsonArray)

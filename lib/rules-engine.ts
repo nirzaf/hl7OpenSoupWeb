@@ -227,10 +227,11 @@ export class RulesEngine {
   private async loadLookupTables(rules: ValidationRule[]): Promise<void> {
     const tableNames = new Set<string>()
     
-    // Extract table names from rules
+    // Extract table names from rules (if we add lookup condition in the future)
     for (const rule of rules) {
-      if (rule.condition === 'lookup' && rule.value) {
-        tableNames.add(rule.value)
+      // Future: handle lookup conditions
+      if (rule.ruleType === 'custom' && rule.value) {
+        // Could extract table names from custom rules
       }
     }
 
