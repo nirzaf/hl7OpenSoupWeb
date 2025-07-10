@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { MessageList } from "./message-list"
 import { MessageViewer } from "./message-viewer"
 import { MessageEditor } from "./message-editor"
@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Search, Filter, Download, Upload } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Plus, Search, Filter, Download, Upload, FileText, X, Database } from "lucide-react"
 import type { HL7Message } from "@/types/hl7"
 
 export function MessageDashboard() {
@@ -16,6 +19,11 @@ export function MessageDashboard() {
   const [selectedMessage, setSelectedMessage] = useState<HL7Message | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
+  const [uploadedContent, setUploadedContent] = useState("")
+  const [uploadedFileName, setUploadedFileName] = useState("")
+  const [isDragOver, setIsDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadMessages()
@@ -66,6 +74,106 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
     }
   }
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const content = e.target?.result as string
+        setUploadedContent(content)
+        setUploadedFileName(file.name)
+      }
+      reader.readAsText(file)
+    }
+  }
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault()
+    setIsDragOver(false)
+
+    const files = event.dataTransfer.files
+    if (files.length > 0) {
+      const file = files[0]
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const content = e.target?.result as string
+        setUploadedContent(content)
+        setUploadedFileName(file.name)
+      }
+      reader.readAsText(file)
+    }
+  }
+
+  const handleUploadSubmit = async () => {
+    if (!uploadedContent.trim()) return
+
+    const currentMessages = Array.isArray(messages) ? messages : []
+    const newMessage = {
+      name: uploadedFileName || `Uploaded Message ${currentMessages.length + 1}`,
+      rawMessage: uploadedContent,
+      metadata: {
+        tags: ['uploaded']
+      }
+    }
+
+    try {
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newMessage),
+      })
+      const created = await response.json()
+      setMessages([created, ...currentMessages])
+      setSelectedMessage(created)
+      setIsUploadDialogOpen(false)
+      setUploadedContent("")
+      setUploadedFileName("")
+    } catch (error) {
+      console.error("Failed to upload message:", error)
+    }
+  }
+
+  const handleClipboardPaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      setUploadedContent(text)
+      setUploadedFileName("Pasted from clipboard")
+    } catch (error) {
+      console.error("Failed to read clipboard:", error)
+    }
+  }
+
+  const handleLoadSamples = async () => {
+    try {
+      const response = await fetch("/api/seed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: false }),
+      })
+      const result = await response.json()
+
+      if (response.ok) {
+        // Reload messages to show the new samples
+        await loadMessages()
+        console.log("Sample messages loaded:", result.message)
+      } else {
+        console.error("Failed to load samples:", result.error)
+      }
+    } catch (error) {
+      console.error("Failed to load sample messages:", error)
+    }
+  }
+
   const filteredMessages = Array.isArray(messages) ? messages.filter(
     (message) => {
       if (!message || typeof message !== 'object') return false
@@ -92,9 +200,112 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
                 <Button size="sm" onClick={handleCreateMessage}>
                   <Plus className="h-4 w-4" />
                 </Button>
-                <Button size="sm" variant="outline">
-                  <Upload className="h-4 w-4" />
+                <Button size="sm" variant="outline" onClick={handleLoadSamples}>
+                  <Database className="h-4 w-4" />
                 </Button>
+                <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <Upload className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Upload HL7 Message</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      {/* File Upload Area */}
+                      <div
+                        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                          isDragOver
+                            ? 'border-primary bg-primary/5'
+                            : 'border-muted-foreground/25 hover:border-primary/50'
+                        }`}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                      >
+                        <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <div className="space-y-2">
+                          <p className="text-lg font-medium">Drop your HL7 file here</p>
+                          <p className="text-sm text-muted-foreground">or click to browse</p>
+                          <Button
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="mt-2"
+                          >
+                            Choose File
+                          </Button>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".hl7,.txt,.dat"
+                            onChange={handleFileUpload}
+                            className="hidden"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Clipboard Paste Option */}
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-2">Or paste from clipboard</p>
+                        <Button variant="outline" onClick={handleClipboardPaste}>
+                          Paste from Clipboard
+                        </Button>
+                      </div>
+
+                      {/* Content Preview */}
+                      {uploadedContent && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label>Content Preview</Label>
+                            {uploadedFileName && (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-muted-foreground">{uploadedFileName}</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setUploadedContent("")
+                                    setUploadedFileName("")
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          <Textarea
+                            value={uploadedContent}
+                            onChange={(e) => setUploadedContent(e.target.value)}
+                            className="font-mono text-sm min-h-[200px]"
+                            placeholder="HL7 message content will appear here..."
+                          />
+                        </div>
+                      )}
+
+                      {/* Upload Actions */}
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setIsUploadDialogOpen(false)
+                            setUploadedContent("")
+                            setUploadedFileName("")
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleUploadSubmit}
+                          disabled={!uploadedContent.trim()}
+                        >
+                          Upload Message
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
             <div className="flex space-x-2">
