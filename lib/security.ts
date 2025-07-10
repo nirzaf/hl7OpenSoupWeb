@@ -33,16 +33,14 @@ export class SecurityService {
   static encrypt(text: string, key: string): string {
     try {
       const iv = crypto.randomBytes(this.IV_LENGTH)
-      const cipher = crypto.createCipher(this.ALGORITHM, key)
-      cipher.setAAD(Buffer.from('hl7-opensoup', 'utf8'))
-      
+      const keyHash = crypto.createHash('sha256').update(key).digest()
+      const cipher = crypto.createCipheriv('aes-256-cbc', keyHash, iv)
+
       let encrypted = cipher.update(text, 'utf8', 'hex')
       encrypted += cipher.final('hex')
-      
-      const authTag = cipher.getAuthTag()
-      
-      // Combine IV, auth tag, and encrypted data
-      return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted
+
+      // Return IV + encrypted data
+      return iv.toString('hex') + ':' + encrypted
     } catch (error) {
       throw new Error(`Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
@@ -54,17 +52,15 @@ export class SecurityService {
   static decrypt(encryptedData: string, key: string): string {
     try {
       const parts = encryptedData.split(':')
-      if (parts.length !== 3) {
+      if (parts.length !== 2) {
         throw new Error('Invalid encrypted data format')
       }
 
       const iv = Buffer.from(parts[0], 'hex')
-      const authTag = Buffer.from(parts[1], 'hex')
-      const encrypted = parts[2]
+      const encrypted = parts[1]
 
-      const decipher = crypto.createDecipher(this.ALGORITHM, key)
-      decipher.setAAD(Buffer.from('hl7-opensoup', 'utf8'))
-      decipher.setAuthTag(authTag)
+      const keyHash = crypto.createHash('sha256').update(key).digest()
+      const decipher = crypto.createDecipheriv('aes-256-cbc', keyHash, iv)
 
       let decrypted = decipher.update(encrypted, 'hex', 'utf8')
       decrypted += decipher.final('utf8')
@@ -105,14 +101,31 @@ export class SecurityService {
       return ''
     }
 
-    return input
-      .replace(/[<>]/g, '') // Remove potential HTML tags
-      .replace(/['"]/g, '') // Remove quotes
-      .replace(/[;]/g, '') // Remove semicolons
-      .replace(/--/g, '') // Remove SQL comment markers
-      .replace(/\/\*/g, '') // Remove SQL block comment start
-      .replace(/\*\//g, '') // Remove SQL block comment end
-      .trim()
+    let sanitized = input
+
+    // Remove HTML tags and scripts
+    sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    sanitized = sanitized.replace(/<[^>]*>/g, '')
+
+    // Remove JavaScript protocols and functions
+    sanitized = sanitized.replace(/javascript:/gi, '')
+    sanitized = sanitized.replace(/data:/gi, '')
+    sanitized = sanitized.replace(/alert\s*\(/gi, '')
+
+    // Remove SQL injection patterns
+    sanitized = sanitized.replace(/\b(DROP|DELETE|INSERT|UPDATE|SELECT|UNION)\s+\w+/gi, '')
+    sanitized = sanitized.replace(/--/g, '') // Remove SQL comment markers
+    sanitized = sanitized.replace(/\/\*/g, '') // Remove SQL block comment start
+    sanitized = sanitized.replace(/\*\//g, '') // Remove SQL block comment end
+
+    // Remove dangerous characters but preserve HL7 delimiters
+    if (!sanitized.includes('MSH|')) {
+      // Only remove quotes and semicolons if it's not an HL7 message
+      sanitized = sanitized.replace(/['"]/g, '')
+      sanitized = sanitized.replace(/[;]/g, '')
+    }
+
+    return sanitized.trim()
   }
 
   /**
@@ -307,6 +320,57 @@ export class SecurityService {
       feedback
     }
   }
+}
+
+// Export individual functions for convenience
+export const encrypt = (text: string, key?: string): string => {
+  const encryptionKey = key || DEFAULT_SECURITY_CONFIG.encryptionKey
+  return SecurityService.encrypt(text, encryptionKey)
+}
+
+export const decrypt = (encryptedData: string, key?: string): string => {
+  const encryptionKey = key || DEFAULT_SECURITY_CONFIG.encryptionKey
+  return SecurityService.decrypt(encryptedData, encryptionKey)
+}
+
+export const hashPassword = (password: string): Promise<string> => {
+  return SecurityService.hashPassword(password)
+}
+
+export const verifyPassword = (password: string, hashedPassword: string): Promise<boolean> => {
+  return SecurityService.verifyPassword(password, hashedPassword)
+}
+
+export const sanitizeInput = (input: any): string => {
+  if (input === null || input === undefined) {
+    return ''
+  }
+  if (typeof input !== 'string') {
+    return String(input)
+  }
+  return SecurityService.sanitizeInput(input)
+}
+
+export const generateApiKey = (): string => {
+  return crypto.randomBytes(32).toString('hex')
+}
+
+export const validateApiKey = (apiKey: any): boolean => {
+  if (!apiKey || typeof apiKey !== 'string') {
+    return false
+  }
+
+  // API key should be at least 32 characters (16 bytes in hex)
+  if (apiKey.length < 32) {
+    return false
+  }
+
+  // API key should only contain valid hex characters
+  if (!/^[a-fA-F0-9]+$/.test(apiKey)) {
+    return false
+  }
+
+  return true
 }
 
 // Export default security configuration

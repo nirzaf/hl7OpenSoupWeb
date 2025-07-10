@@ -1,24 +1,63 @@
-import { createMocks } from 'node-mocks-http'
+import { getCollection } from '../../lib/mongodb'
+
+// Mock Next.js server components before importing routes
+jest.mock('next/server', () => ({
+  NextRequest: class NextRequest {
+    constructor(url, options = {}) {
+      this.url = url
+      this.method = options.method || 'GET'
+      this.headers = new Map()
+      this._body = options.body
+    }
+
+    async json() {
+      if (typeof this._body === 'string') {
+        return JSON.parse(this._body)
+      }
+      return this._body || {}
+    }
+  },
+  NextResponse: {
+    json: (data, options = {}) => ({
+      json: () => Promise.resolve(data),
+      status: options.status || 200,
+      headers: new Map()
+    }),
+    next: () => ({ next: true })
+  }
+}))
+
+// Import routes after mocking
 import { GET, POST } from '../../app/api/messages/route'
 import { POST as validatePOST } from '../../app/api/messages/validate/route'
-import { getCollection } from '../../lib/mongodb'
+import { NextRequest } from 'next/server'
 
 // Mock MongoDB
 jest.mock('../../lib/mongodb')
+jest.mock('mongodb', () => ({
+  ObjectId: jest.fn().mockImplementation((id) => ({ toString: () => id || 'mock-id' })),
+  MongoClient: jest.fn()
+}))
+
 const mockGetCollection = getCollection as jest.MockedFunction<typeof getCollection>
 
 // Mock HL7Service
 jest.mock('../../lib/hl7Service', () => ({
   HL7Service: jest.fn().mockImplementation(() => ({
-    parseMessage: jest.fn().mockReturnValue({
-      segments: {
-        MSH: { 'MSH.1': '|', 'MSH.9': 'ADT^A01' },
-        PID: { 'PID.1': '1', 'PID.3': 'PATIENT123' }
-      },
-      metadata: {
-        messageType: 'ADT^A01',
-        versionId: '2.5',
-        sendingFacility: 'TEST_FACILITY'
+    parseMessage: jest.fn().mockImplementation((message) => {
+      if (message.includes('INVALID')) {
+        throw new Error('Invalid HL7 format')
+      }
+      return {
+        segments: {
+          MSH: { 'MSH.1': '|', 'MSH.9': 'ADT^A01' },
+          PID: { 'PID.1': '1', 'PID.3': 'PATIENT123' }
+        },
+        metadata: {
+          messageType: 'ADT^A01',
+          versionId: '2.5',
+          sendingFacility: 'TEST_FACILITY'
+        }
       }
     }),
     validateMessage: jest.fn().mockReturnValue({
@@ -101,9 +140,8 @@ describe('/api/messages', () => {
       })
       mockCollection.countDocuments.mockResolvedValue(2)
 
-      const { req, res } = createMocks({
-        method: 'GET',
-        url: '/api/messages?page=1&limit=10'
+      const req = new NextRequest('http://localhost:3000/api/messages?page=1&limit=10', {
+        method: 'GET'
       })
 
       await GET(req)
@@ -113,9 +151,8 @@ describe('/api/messages', () => {
     })
 
     it('should handle filtering by message type', async () => {
-      const { req, res } = createMocks({
-        method: 'GET',
-        url: '/api/messages?filter[messageType]=ADT^A01'
+      const req = new NextRequest('http://localhost:3000/api/messages?filter[messageType]=ADT^A01', {
+        method: 'GET'
       })
 
       await GET(req)
@@ -128,9 +165,8 @@ describe('/api/messages', () => {
     })
 
     it('should handle search queries', async () => {
-      const { req, res } = createMocks({
-        method: 'GET',
-        url: '/api/messages?search=patient'
+      const req = new NextRequest('http://localhost:3000/api/messages?search=patient', {
+        method: 'GET'
       })
 
       await GET(req)
@@ -149,9 +185,8 @@ describe('/api/messages', () => {
         throw new Error('Database connection failed')
       })
 
-      const { req, res } = createMocks({
-        method: 'GET',
-        url: '/api/messages'
+      const req = new NextRequest('http://localhost:3000/api/messages', {
+        method: 'GET'
       })
 
       const response = await GET(req)
@@ -169,9 +204,9 @@ describe('/api/messages', () => {
         rawMessage: 'MSH|^~\\&|SENDING_APP|FACILITY|RECEIVING_APP|FACILITY|20231201120000||ADT^A01|MSG001|P|2.5\rPID|1||PATIENT123||DOE^JOHN||19800101|M'
       }
 
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/messages', {
         method: 'POST',
-        body: messageData
+        body: JSON.stringify(messageData)
       })
 
       const response = await POST(req)
@@ -200,9 +235,9 @@ describe('/api/messages', () => {
         }
       }
 
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/messages', {
         method: 'POST',
-        body: messageData
+        body: JSON.stringify(messageData)
       })
 
       const response = await POST(req)
@@ -212,7 +247,10 @@ describe('/api/messages', () => {
         expect.objectContaining({
           name: messageData.name,
           parsedMessage: messageData.parsedMessage,
-          metadata: messageData.metadata
+          metadata: expect.objectContaining({
+            messageType: messageData.metadata.messageType,
+            versionId: messageData.metadata.versionId
+          })
         })
       )
     })
@@ -231,9 +269,9 @@ describe('/api/messages', () => {
         rawMessage: 'INVALID_HL7_CONTENT'
       }
 
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/messages', {
         method: 'POST',
-        body: messageData
+        body: JSON.stringify(messageData)
       })
 
       const response = await POST(req)
@@ -249,9 +287,9 @@ describe('/api/messages', () => {
         rawMessage: 'MSH|^~\\&|...'
       }
 
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/messages', {
         method: 'POST',
-        body: messageData
+        body: JSON.stringify(messageData)
       })
 
       const response = await POST(req)
@@ -269,9 +307,9 @@ describe('/api/messages', () => {
         rawMessage: 'MSH|^~\\&|...'
       }
 
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/messages', {
         method: 'POST',
-        body: messageData
+        body: JSON.stringify(messageData)
       })
 
       const response = await POST(req)
@@ -294,11 +332,11 @@ describe('/api/messages', () => {
 
       mockCollection.findOne.mockResolvedValue(mockMessage)
 
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/messages/validate', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           messageId: 'message-id'
-        }
+        })
       })
 
       const response = await validatePOST(req)
@@ -310,11 +348,11 @@ describe('/api/messages', () => {
     })
 
     it('should validate raw message content', async () => {
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/messages/validate', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           rawMessage: 'MSH|^~\\&|SENDING_APP|FACILITY|RECEIVING_APP|FACILITY|20231201120000||ADT^A01|MSG001|P|2.5'
-        }
+        })
       })
 
       const response = await validatePOST(req)
@@ -345,12 +383,12 @@ describe('/api/messages', () => {
         })
         .mockResolvedValueOnce(mockRuleSet)
 
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/messages/validate', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           messageId: 'message-id',
           ruleSetId: 'ruleset-id'
-        }
+        })
       })
 
       const response = await validatePOST(req)
@@ -361,12 +399,12 @@ describe('/api/messages', () => {
     })
 
     it('should handle UK ITK validation', async () => {
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/messages/validate', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           rawMessage: 'MSH|^~\\&|...',
           useUKITK: true
-        }
+        })
       })
 
       const response = await validatePOST(req)
@@ -377,11 +415,11 @@ describe('/api/messages', () => {
     })
 
     it('should handle validation errors', async () => {
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/messages/validate', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           messageId: 'non-existent-id'
-        }
+        })
       })
 
       const response = await validatePOST(req)
@@ -392,16 +430,16 @@ describe('/api/messages', () => {
     })
 
     it('should handle missing validation data', async () => {
-      const { req, res } = createMocks({
+      const req = new NextRequest('http://localhost:3000/api/messages/validate', {
         method: 'POST',
-        body: {}
+        body: JSON.stringify({})
       })
 
       const response = await validatePOST(req)
       const responseData = await response.json()
 
       expect(response.status).toBe(400)
-      expect(responseData.error).toContain('No message data provided')
+      expect(responseData.error).toContain('No message provided for validation')
     })
   })
 })

@@ -163,12 +163,12 @@ export class HL7Service {
       // MSH segment is an array: [MSH, field_separator, encoding_chars, sending_app, sending_facility, ...]
       if (Array.isArray(msh) && msh.length > 0) {
         return {
-          messageType: msh[9] || 'Unknown', // Message type is typically in field 9
-          versionId: msh[12] || '2.5', // Version ID is typically in field 12
-          sendingFacility: msh[4] || 'Unknown', // Sending facility is in field 4
-          receivingFacility: msh[6] || 'Unknown', // Receiving facility is in field 6
-          timestamp: this.parseHL7DateTime(msh[7]), // Timestamp is in field 7
-          controlId: msh[10] || 'Unknown' // Control ID is in field 10
+          messageType: msh[8] || 'Unknown', // Message type is in field 8 (index 8)
+          versionId: msh[11] || '2.5', // Version ID is in field 11 (index 11)
+          sendingFacility: msh[3] || 'Unknown', // Sending facility is in field 3 (index 3)
+          receivingFacility: msh[5] || 'Unknown', // Receiving facility is in field 5 (index 5)
+          timestamp: this.parseHL7DateTime(msh[6]), // Timestamp is in field 6 (index 6)
+          controlId: msh[9] || 'Unknown' // Control ID is in field 9 (index 9)
         }
       }
 

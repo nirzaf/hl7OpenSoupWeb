@@ -33,19 +33,16 @@ export class XMLConversionService {
       // Prepare data for XML conversion
       const xmlData = {
         HL7Message: {
-          _attributes: {
-            version: '1.0',
-            encoding: options?.encoding || 'UTF-8'
-          },
           ...jsonData
         }
       }
 
       const xmlString = xmljs.js2xml(xmlData, xmlOptions)
-      
+      const xmlWithDeclaration = `<?xml version="1.0" encoding="UTF-8"?>${xmlString}`
+
       return {
         success: true,
-        data: xmlString,
+        data: xmlWithDeclaration,
         format: 'xml'
       }
     } catch (error) {
@@ -101,29 +98,31 @@ export class CSVConversionService {
    */
   static toCSV(jsonData: any, options?: Partial<TransformationOptions>): TransformationResult {
     try {
-      // Flatten the hierarchical HL7 structure for CSV
-      const flattenedData = this.flattenHL7Data(jsonData, options)
-      
-      const csvOptions = {
-        delimiter: {
-          field: ',',
-          wrap: '"',
-          eol: '\n'
-        },
-        prependHeader: true,
-        sortHeader: false,
-        trimHeaderFields: true,
-        trimFieldValues: true,
-        expandNestedObjects: options?.flattenStructure !== false,
-        unwindArrays: true,
-        emptyFieldValue: ''
-      }
+      // Create simple CSV format: Segment,Field,Value
+      const csvRows: string[] = ['Segment,Field,Value']
 
-      const csvString = json2csv.json2csv(flattenedData, csvOptions)
-      
+      // Process segments
+      const segments = jsonData.segments || jsonData
+
+      Object.keys(segments).forEach(segmentName => {
+        const segment = segments[segmentName]
+
+        if (typeof segment === 'object' && segment !== null) {
+          Object.keys(segment).forEach(fieldName => {
+            const value = segment[fieldName]
+            if (value !== undefined && value !== null) {
+              // Escape commas and quotes in values
+              const escapedValue = String(value).replace(/"/g, '""')
+              const finalValue = escapedValue.includes(',') ? `"${escapedValue}"` : escapedValue
+              csvRows.push(`${segmentName},${fieldName},${finalValue}`)
+            }
+          })
+        }
+      })
+
       return {
         success: true,
-        data: csvString,
+        data: csvRows.join('\n'),
         format: 'csv'
       }
     } catch (error) {
@@ -140,23 +139,59 @@ export class CSVConversionService {
    */
   static fromCSV(csvData: string): TransformationResult {
     try {
-      // Parse CSV to JSON array
-      // For now, we'll implement a simple CSV parser
-      const lines = csvData.split('\n')
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
-      const jsonArray = lines.slice(1).filter(line => line.trim()).map(line => {
-        const values = line.split(',').map(v => v.trim().replace(/"/g, ''))
-        const obj: any = {}
-        headers.forEach((header, index) => {
-          obj[header] = values[index] || ''
-        })
-        return obj
+      if (!csvData || csvData.trim() === '') {
+        return {
+          success: false,
+          error: 'CSV parsing failed: Empty CSV data',
+          format: 'json'
+        }
+      }
+
+      // Parse simple CSV format: Segment,Field,Value
+      const lines = csvData.split('\n').filter(line => line.trim())
+
+      if (lines.length === 0) {
+        return {
+          success: false,
+          error: 'CSV parsing failed: No data found',
+          format: 'json'
+        }
+      }
+
+      // Skip header line if it exists
+      const dataLines = lines[0].includes('Segment,Field,Value') ? lines.slice(1) : lines
+
+      const hl7Data: any = {}
+
+      let validLines = 0
+      dataLines.forEach(line => {
+        const parts = line.split(',')
+        if (parts.length >= 3) {
+          const segment = parts[0].trim()
+          const field = parts[1].trim()
+          const value = parts.slice(2).join(',').trim().replace(/^"|"$/g, '') // Handle quoted values
+
+          // Validate that segment and field are not empty
+          if (segment && field) {
+            if (!hl7Data[segment]) {
+              hl7Data[segment] = {}
+            }
+
+            hl7Data[segment][field] = value
+            validLines++
+          }
+        }
       })
 
+      // If no valid lines were found, consider it invalid
+      if (validLines === 0 && dataLines.length > 0) {
+        return {
+          success: false,
+          error: 'CSV parsing failed: No valid HL7 data found',
+          format: 'json'
+        }
+      }
 
-      // Reconstruct HL7 structure from flattened CSV data
-      const hl7Data = this.reconstructHL7Data(jsonArray)
-      
       return {
         success: true,
         data: JSON.stringify(hl7Data, null, 2),

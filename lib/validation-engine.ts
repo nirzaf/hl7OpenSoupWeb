@@ -123,7 +123,7 @@ export class ValidationEngine {
     const info: ValidationError[] = []
 
     for (const rule of ruleSet.rules) {
-      if (!rule.isActive) continue
+      if (rule.isActive === false) continue
 
       try {
         const result = this.evaluateRule(messageData, rule)
@@ -339,7 +339,8 @@ export class ValidationEngine {
         return { violated: value !== undefined && value !== null && value !== '', value }
       
       case 'equals':
-        return { violated: value !== rule.value, value }
+        const expectedValue = (rule as any).expectedValue || rule.value
+        return { violated: value !== expectedValue, value }
       
       case 'not_equals':
         return { violated: value === rule.value, value }
@@ -364,13 +365,14 @@ export class ValidationEngine {
       
       case 'matchesRegex':
         try {
-          const regex = new RegExp(rule.value || '')
-          return { 
-            violated: typeof value !== 'string' || !regex.test(value), 
-            value 
+          const regexPattern = (rule as any).expectedValue || rule.value || ''
+          const regex = new RegExp(regexPattern)
+          return {
+            violated: typeof value !== 'string' || !regex.test(value),
+            value
           }
         } catch (error) {
-          return { violated: false, value }
+          throw new Error(`Invalid regex pattern: ${(rule as any).expectedValue || rule.value}`)
         }
       
       default:
@@ -382,9 +384,34 @@ export class ValidationEngine {
    * Get value at a specific path in the message data
    */
   private getValueAtPath(obj: any, path: string): any {
-    const pathParts = path.split('.')
-    let current = obj
+    if (!obj || !path) {
+      return undefined
+    }
 
+    // Handle paths like 'PID.3' where the data structure is { PID: { 'PID.3': value } }
+    const pathParts = path.split('.')
+
+    if (pathParts.length === 2) {
+      const [segment, field] = pathParts
+
+      // First try to access the segment
+      if (obj[segment] && typeof obj[segment] === 'object') {
+        const segmentObj = obj[segment]
+
+        // Try the full path as a key (e.g., 'PID.3')
+        if (path in segmentObj) {
+          return segmentObj[path]
+        }
+
+        // Try just the field number
+        if (field in segmentObj) {
+          return segmentObj[field]
+        }
+      }
+    }
+
+    // Fallback to standard nested property access
+    let current = obj
     for (const part of pathParts) {
       if (current && typeof current === 'object' && part in current) {
         current = current[part]
@@ -400,7 +427,11 @@ export class ValidationEngine {
    * Extract segment name from path
    */
   private extractSegmentFromPath(path: string): string {
-    return path.split('.')[0] || 'Unknown'
+    if (!path || !path.includes('.')) {
+      return 'UNKNOWN'
+    }
+    const segment = path.split('.')[0]
+    return segment && segment.length > 0 ? segment : 'UNKNOWN'
   }
 
   /**
@@ -432,6 +463,23 @@ export class ValidationEngine {
       description: 'UK Interoperability Toolkit for NHS',
       mandatorySegments: ['MSH', 'EVN'],
       optionalSegments: ['PID', 'PV1', 'ZU1', 'ZU3'],
+      segments: {
+        MSH: {
+          name: 'Message Header',
+          required: true,
+          fields: ['MSH.1', 'MSH.2', 'MSH.3', 'MSH.4', 'MSH.5', 'MSH.6', 'MSH.7', 'MSH.8', 'MSH.9', 'MSH.10', 'MSH.11', 'MSH.12']
+        },
+        EVN: {
+          name: 'Event Type',
+          required: true,
+          fields: ['EVN.1', 'EVN.2', 'EVN.3', 'EVN.4', 'EVN.5', 'EVN.6']
+        },
+        PID: {
+          name: 'Patient Identification',
+          required: false,
+          fields: ['PID.1', 'PID.2', 'PID.3', 'PID.4', 'PID.5', 'PID.6', 'PID.7', 'PID.8']
+        }
+      },
       segmentCardinality: {
         'QAK': '[1..1]',
         'EVN': '[1..1]'

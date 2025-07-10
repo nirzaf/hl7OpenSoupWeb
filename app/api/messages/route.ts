@@ -13,8 +13,10 @@ export async function GET(request: NextRequest) {
 
     // Filter parameters
     const sendingFacility = searchParams.get('filter[sendingFacility]')
+    const messageType = searchParams.get('filter[messageType]')
     const tags = searchParams.get('filter[tags]')
     const searchContent = searchParams.get('search[content]')
+    const search = searchParams.get('search')
 
     const collection = await getCollection("messages")
 
@@ -25,12 +27,24 @@ export async function GET(request: NextRequest) {
       filter['metadata.sendingFacility'] = sendingFacility
     }
 
+    if (messageType) {
+      filter['metadata.messageType'] = messageType
+    }
+
     if (tags) {
       filter['metadata.tags'] = { $in: tags.split(',') }
     }
 
     if (searchContent) {
       filter.$text = { $search: searchContent }
+    }
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { 'metadata.sendingFacility': { $regex: search, $options: 'i' } },
+        { 'metadata.messageType': { $regex: search, $options: 'i' } }
+      ]
     }
 
     // Get total count for pagination
@@ -68,6 +82,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const messageData = await request.json()
+
+    // Validate required fields
+    if (!messageData.name) {
+      return NextResponse.json(
+        { error: "Name is required" },
+        { status: 400 }
+      )
+    }
+
     const collection = await getCollection("messages")
 
     // Parse the HL7 message if rawMessage is provided
@@ -75,10 +98,20 @@ export async function POST(request: NextRequest) {
     let metadata = messageData.metadata
 
     if (messageData.rawMessage && !parsedMessage) {
-      const hl7Service = new HL7Service()
-      const parsed = hl7Service.parseMessage(messageData.rawMessage)
-      parsedMessage = parsed.segments
-      metadata = parsed.metadata
+      try {
+        const hl7Service = new HL7Service()
+        const parsed = hl7Service.parseMessage(messageData.rawMessage)
+        parsedMessage = parsed.segments
+        metadata = parsed.metadata
+      } catch (parseError) {
+        return NextResponse.json(
+          {
+            error: "Failed to parse HL7 message",
+            details: parseError instanceof Error ? parseError.message : 'Invalid HL7 format'
+          },
+          { status: 400 }
+        )
+      }
     }
 
     const newMessage: Partial<HL7Message> = {
