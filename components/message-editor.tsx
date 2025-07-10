@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { HL7Message } from "@/types/hl7"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Save, Undo, Redo } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Save, Undo, Redo, Eye, Code, AlertTriangle } from "lucide-react"
+import { HL7SyntaxHighlighter, HL7_SYNTAX_CSS } from "@/lib/hl7-syntax-highlighter"
 
 interface MessageEditorProps {
   message: HL7Message
@@ -18,9 +20,31 @@ interface MessageEditorProps {
 export function MessageEditor({ message, onSave }: MessageEditorProps) {
   const [editedMessage, setEditedMessage] = useState(message)
   const [hasChanges, setHasChanges] = useState(false)
+  const [validationResults, setValidationResults] = useState<any>(null)
+  const [isValidating, setIsValidating] = useState(false)
+
+  // Use rawMessage if available, fallback to content for backward compatibility
+  const rawContent = editedMessage.rawMessage || (editedMessage as any).content || ''
+
+  useEffect(() => {
+    // Inject CSS for syntax highlighting
+    const styleElement = document.createElement('style')
+    styleElement.textContent = HL7_SYNTAX_CSS
+    document.head.appendChild(styleElement)
+
+    return () => {
+      document.head.removeChild(styleElement)
+    }
+  }, [])
 
   const handleContentChange = (content: string) => {
-    setEditedMessage({ ...editedMessage, content })
+    setEditedMessage({
+      ...editedMessage,
+      rawMessage: content,
+      // Clear validation results when content changes
+      isValid: undefined,
+      validationErrors: undefined
+    })
     setHasChanges(true)
   }
 
@@ -39,15 +63,52 @@ export function MessageEditor({ message, onSave }: MessageEditorProps) {
           updatedAt: new Date(),
         }),
       })
-      const updated = await response.json()
-      onSave(updated)
+      const result = await response.json()
+      onSave(result.data || result)
       setHasChanges(false)
     } catch (error) {
       console.error("Failed to save message:", error)
     }
   }
 
-  const segments = editedMessage.content.split("\n").filter((line) => line.trim())
+  const validateMessage = async () => {
+    setIsValidating(true)
+    try {
+      const response = await fetch('/api/messages/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawMessage: rawContent })
+      })
+      const result = await response.json()
+      setValidationResults(result.data)
+    } catch (error) {
+      console.error('Validation failed:', error)
+    } finally {
+      setIsValidating(false)
+    }
+  }
+
+  const segments = rawContent.split("\n").filter((line) => line.trim())
+
+  const renderHighlightedContent = () => {
+    if (!validationResults) {
+      return rawContent
+    }
+
+    const highlightRules = HL7SyntaxHighlighter.validationErrorsToHighlightRules(
+      rawContent,
+      validationResults.results || []
+    )
+
+    return (
+      <div
+        className="font-mono text-sm whitespace-pre-wrap"
+        dangerouslySetInnerHTML={{
+          __html: HL7SyntaxHighlighter.applyHighlighting(rawContent, highlightRules)
+        }}
+      />
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -62,6 +123,15 @@ export function MessageEditor({ message, onSave }: MessageEditorProps) {
               </Button>
               <Button size="sm" variant="outline">
                 <Redo className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={validateMessage}
+                disabled={isValidating}
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                {isValidating ? 'Validating...' : 'Validate'}
               </Button>
               <Button size="sm" onClick={handleSave} disabled={!hasChanges}>
                 <Save className="h-4 w-4 mr-2" />
@@ -79,8 +149,8 @@ export function MessageEditor({ message, onSave }: MessageEditorProps) {
             <div>
               <Label>Message Type</Label>
               <div className="flex items-center space-x-2 mt-2">
-                <Badge>{editedMessage.messageType}</Badge>
-                <Badge variant="outline">HL7 v{editedMessage.version}</Badge>
+                <Badge>{editedMessage.metadata?.messageType || (editedMessage as any).messageType || 'Unknown'}</Badge>
+                <Badge variant="outline">HL7 v{editedMessage.metadata?.versionId || (editedMessage as any).version || 'Unknown'}</Badge>
               </div>
             </div>
           </div>
@@ -92,17 +162,65 @@ export function MessageEditor({ message, onSave }: MessageEditorProps) {
           <CardTitle>Message Content</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <Textarea
-              value={editedMessage.content}
-              onChange={(e) => handleContentChange(e.target.value)}
-              className="font-mono text-sm min-h-[400px]"
-              placeholder="Enter HL7 message content..."
-            />
-            <div className="text-sm text-muted-foreground">
-              {segments.length} segments • {editedMessage.content.length} characters
-            </div>
-          </div>
+          <Tabs defaultValue="editor" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="editor" className="flex items-center space-x-2">
+                <Code className="h-4 w-4" />
+                <span>Editor</span>
+              </TabsTrigger>
+              <TabsTrigger value="preview" className="flex items-center space-x-2">
+                <Eye className="h-4 w-4" />
+                <span>Preview</span>
+              </TabsTrigger>
+              <TabsTrigger value="highlighted" className="flex items-center space-x-2">
+                <AlertTriangle className="h-4 w-4" />
+                <span>Highlighted</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="editor" className="mt-4">
+              <div className="space-y-4">
+                <Textarea
+                  value={rawContent}
+                  onChange={(e) => handleContentChange(e.target.value)}
+                  className="font-mono text-sm min-h-[400px]"
+                  placeholder="Enter HL7 message content..."
+                />
+                <div className="text-sm text-muted-foreground">
+                  {segments.length} segments • {rawContent.length} characters
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="preview" className="mt-4">
+              <div className="border rounded-lg p-4 min-h-[400px] bg-muted/50">
+                <pre className="font-mono text-sm whitespace-pre-wrap">
+                  {rawContent}
+                </pre>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="highlighted" className="mt-4">
+              <div className="border rounded-lg p-4 min-h-[400px] bg-muted/50">
+                {validationResults ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-4 text-sm">
+                      <Badge variant={validationResults.isValid ? "default" : "destructive"}>
+                        {validationResults.isValid ? "Valid" : "Invalid"}
+                      </Badge>
+                      <span>Errors: {validationResults.summary?.totalErrors || 0}</span>
+                      <span>Warnings: {validationResults.summary?.totalWarnings || 0}</span>
+                    </div>
+                    {renderHighlightedContent()}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Click "Validate" to see syntax highlighting and error detection
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -126,6 +244,32 @@ export function MessageEditor({ message, onSave }: MessageEditorProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Validation Results */}
+      {validationResults && validationResults.results.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className={validationResults.isValid ? "text-green-600" : "text-red-600"}>
+              Validation Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {validationResults.results.map((result: any, index: number) => (
+                <div key={index} className="flex items-start space-x-2 p-2 rounded border">
+                  <Badge variant={result.severity === "error" ? "destructive" : "secondary"}>
+                    {result.severity}
+                  </Badge>
+                  <div className="flex-1">
+                    <p className="font-medium">{result.segment}.{result.field}</p>
+                    <p className="text-sm text-muted-foreground">{result.message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
