@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -44,52 +44,14 @@ interface FieldInfo {
 
 export function HL7Preview({ content, className = "" }: HL7PreviewProps) {
   const [expandedSegments, setExpandedSegments] = useState<Set<string>>(new Set(['MSH']))
-  
+
   const hl7Service = new HL7Service()
-  
-  const parsedData = useMemo(() => {
-    if (!content.trim()) {
-      return { segments: [], metadata: null, isValid: false }
-    }
-    
-    try {
-      const parsed = hl7Service.parseMessage(content)
-      const segments = parseSegments(content)
-      return {
-        segments,
-        metadata: parsed.metadata,
-        isValid: true
-      }
-    } catch (error) {
-      return {
-        segments: parseSegments(content),
-        metadata: null,
-        isValid: false,
-        error: error instanceof Error ? error.message : 'Unknown parsing error'
-      }
-    }
-  }, [content])
 
-  const parseSegments = (hl7Text: string): ParsedSegment[] => {
-    const lines = hl7Text.split('\n').filter(line => line.trim())
-    return lines.map(line => {
-      const fields = line.split('|')
-      const segmentType = fields[0] || 'UNK'
-      
-      return {
-        type: segmentType,
-        fields,
-        description: getSegmentDescription(segmentType),
-        color: getSegmentColor(segmentType)
-      }
-    })
-  }
-
-  const getSegmentDescription = (segmentType: string): string => {
+  const getSegmentDescription = useCallback((segmentType: string): string => {
     const descriptions: Record<string, string> = {
       MSH: "Message Header",
       EVN: "Event Type",
-      PID: "Patient Identification", 
+      PID: "Patient Identification",
       PV1: "Patient Visit",
       OBX: "Observation/Result",
       OBR: "Observation Request",
@@ -104,9 +66,9 @@ export function HL7Preview({ content, className = "" }: HL7PreviewProps) {
       ZU3: "Attendance Details (UK ITK)"
     }
     return descriptions[segmentType] || "Unknown Segment"
-  }
+  }, [])
 
-  const getSegmentColor = (segmentType: string): string => {
+  const getSegmentColor = useCallback((segmentType: string): string => {
     const colors: Record<string, string> = {
       MSH: "bg-blue-50 border-blue-200 text-blue-900",
       EVN: "bg-green-50 border-green-200 text-green-900",
@@ -123,12 +85,50 @@ export function HL7Preview({ content, className = "" }: HL7PreviewProps) {
       IN1: "bg-teal-50 border-teal-200 text-teal-900"
     }
     return colors[segmentType] || "bg-gray-50 border-gray-200 text-gray-900"
-  }
+  }, [])
 
-  const getFieldInfo = (segmentType: string, fieldIndex: number, value: string): FieldInfo => {
+  const parseSegments = useCallback((hl7Text: string): ParsedSegment[] => {
+    const lines = hl7Text.split('\n').filter(line => line.trim())
+    return lines.map(line => {
+      const fields = line.split('|')
+      const segmentType = fields[0] || 'UNK'
+
+      return {
+        type: segmentType,
+        fields,
+        description: getSegmentDescription(segmentType),
+        color: getSegmentColor(segmentType)
+      }
+    })
+  }, [getSegmentDescription, getSegmentColor])
+
+  const parsedData = useMemo(() => {
+    if (!content.trim()) {
+      return { segments: [], metadata: null, isValid: false }
+    }
+
+    try {
+      const parsed = hl7Service.parseMessage(content)
+      const segments = parseSegments(content)
+      return {
+        segments,
+        metadata: parsed.metadata,
+        isValid: true
+      }
+    } catch (error) {
+      return {
+        segments: parseSegments(content),
+        metadata: null,
+        isValid: false,
+        error: error instanceof Error ? error.message : 'Unknown parsing error'
+      }
+    }
+  }, [content, parseSegments])
+
+  const getFieldInfo = useCallback((segmentType: string, fieldIndex: number, value: string): FieldInfo => {
     const segmentDef = HL7_V25_SCHEMA.segments[segmentType]
     const fieldDef = segmentDef?.fields.find(f => f.position === fieldIndex + 1)
-    
+
     return {
       position: fieldIndex + 1,
       name: fieldDef?.name || `Field ${fieldIndex + 1}`,
@@ -137,7 +137,7 @@ export function HL7Preview({ content, className = "" }: HL7PreviewProps) {
       required: fieldDef?.required,
       description: fieldDef?.description
     }
-  }
+  }, [])
 
   const toggleSegment = (segmentType: string) => {
     const newExpanded = new Set(expandedSegments)
