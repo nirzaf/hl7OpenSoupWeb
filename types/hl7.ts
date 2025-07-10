@@ -1,12 +1,19 @@
 export interface HL7Message {
   _id: string
   name: string
-  content: string
-  version: string
-  messageType: string
+  rawMessage: string
+  parsedMessage: Record<string, any>
+  metadata: {
+    messageType: string
+    versionId: string
+    sendingFacility: string
+    receivingFacility: string
+    timestamp: Date
+    controlId: string
+    tags?: string[]
+  }
   createdAt: Date
   updatedAt: Date
-  tags?: string[]
   isValid?: boolean
   validationErrors?: ValidationError[]
 }
@@ -60,16 +67,39 @@ export type HL7Version =
   | "2.9"
 
 export interface ValidationRule {
-  id: string
+  _id?: string
   name: string
   description: string
   ruleType: "structure" | "content" | "custom"
   hl7Version: HL7Version
   segmentType?: string
   fieldPosition?: number
-  ruleExpression: string
+  targetPath?: string
+  condition?: "exists" | "not_exists" | "equals" | "not_equals" | "startsWith" | "endsWith" | "contains" | "matchesRegex"
+  value?: string
+  action: "error" | "warning" | "info" | "highlight"
+  actionDetail?: string
   severity: "error" | "warning" | "info"
   isActive: boolean
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+export interface RuleSet {
+  _id?: string
+  name: string
+  description: string
+  isSystemDefined: boolean
+  rules: ValidationRule[]
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+export interface LookupTable {
+  _id?: string
+  name: string
+  description: string
+  data: Array<{key: string, value: string}>
   createdAt?: Date
   updatedAt?: Date
 }
@@ -80,6 +110,21 @@ export interface TransformationOptions {
   customMapping: boolean
   dateFormat: string
   encoding: string
+}
+
+export interface Workflow {
+  _id?: string
+  name: string
+  description: string
+  steps: WorkflowStep[]
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+export interface WorkflowStep {
+  type: "validate" | "transform" | "editField" | "lookupAndReplace"
+  parameters: Record<string, any>
+  order: number
 }
 
 export interface User {
