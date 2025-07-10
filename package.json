@@ -6,7 +6,15 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:all": "npm run test && npm run test:e2e",
+    "playwright:install": "playwright install"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "1.2.2",
@@ -63,9 +71,19 @@
     "zod": "3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "22.0.0",
     "@types/react": "18.3.0",
     "@types/react-dom": "18.3.0",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^30.0.4",
+    "jest-environment-jsdom": "^30.0.4",
+    "msw": "^2.10.3",
+    "node-mocks-http": "^1.17.2",
     "postcss": "8.5.0",
     "tailwindcss": "3.4.17",
     "typescript": "5.6.3"
