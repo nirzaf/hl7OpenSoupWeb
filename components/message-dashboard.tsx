@@ -37,15 +37,16 @@ export function MessageDashboard() {
   }
 
   const handleCreateMessage = async () => {
-    const newMessage: Partial<HL7Message> = {
-      name: `New Message ${messages.length + 1}`,
-      content: `MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|${new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "")}||ADT^A01|${Date.now()}|P|2.5
+    const rawMessage = `MSH|^~\\&|SENDING_APP|SENDING_FACILITY|RECEIVING_APP|RECEIVING_FACILITY|${new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "")}||ADT^A01|${Date.now()}|P|2.5
 EVN||${new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "")}
-PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^A|19800101|M||C|1200 N ELM STREET^^GREENSBORO^NC^27401-1020|GL|(919)379-1212|(919)271-3434~(919)277-3114||S||PATID12345001^2^M10^ADT1^AN^A|123456789|9-87654^NC`,
-      version: "2.5",
-      messageType: "ADT^A01",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^A|19800101|M||C|1200 N ELM STREET^^GREENSBORO^NC^27401-1020|GL|(919)379-1212|(919)271-3434~(919)277-3114||S||PATID12345001^2^M10^ADT1^AN^A|123456789|9-87654^NC`
+
+    const newMessage = {
+      name: `New Message ${messages.length + 1}`,
+      rawMessage,
+      metadata: {
+        tags: ['new']
+      }
     }
 
     try {
@@ -65,7 +66,7 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
   const filteredMessages = messages.filter(
     (message) =>
       message.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.messageType.toLowerCase().includes(searchTerm.toLowerCase()),
+      (message.metadata?.messageType || (message as any).messageType || '').toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   if (isLoading) {

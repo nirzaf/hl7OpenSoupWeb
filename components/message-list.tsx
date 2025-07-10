@@ -30,10 +30,10 @@ export function MessageList({ messages, selectedMessage, onSelectMessage }: Mess
                 <h4 className="text-sm font-medium">{message.name}</h4>
                 <div className="flex items-center space-x-2">
                   <Badge variant="secondary" className="text-xs">
-                    {message.messageType}
+                    {message.metadata?.messageType || (message as any).messageType || 'Unknown'}
                   </Badge>
                   <Badge variant="outline" className="text-xs">
-                    v{message.version}
+                    v{message.metadata?.versionId || (message as any).version || 'Unknown'}
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -41,7 +41,10 @@ export function MessageList({ messages, selectedMessage, onSelectMessage }: Mess
                 </p>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="h-2 w-2 bg-green-500 rounded-full" title="Valid" />
+                <div
+                  className={`h-2 w-2 rounded-full ${message.isValid ? 'bg-green-500' : 'bg-red-500'}`}
+                  title={message.isValid ? "Valid" : "Invalid"}
+                />
               </div>
             </div>
           </CardContent>
