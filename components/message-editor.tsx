@@ -70,11 +70,21 @@ export function MessageEditor({ message, onSave }: MessageEditorProps) {
           updatedAt: new Date(),
         }),
       })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to save: ${response.status} ${errorText}`)
+      }
+
       const result = await response.json()
       onSave(result.data || result)
       setHasChanges(false)
+
+      // Show success message
+      alert("Message saved successfully!")
     } catch (error) {
       console.error("Failed to save message:", error)
+      alert(`Failed to save message: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
