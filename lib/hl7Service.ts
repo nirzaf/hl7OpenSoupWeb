@@ -1,4 +1,4 @@
-import { HL7v2 } from '@ehr/hl7-v2'
+import { Parser, Generator } from '@ehr/hl7-v2'
 import type { HL7Message, ValidationError, HL7Schema } from '@/types/hl7'
 
 export interface ParsedHL7Message {
@@ -20,12 +20,14 @@ export interface ValidationResult {
 }
 
 export class HL7Service {
-  private parser: HL7v2
+  private parser: any
+  private generator: any
   private customSchema?: any
 
   constructor(customSchema?: any) {
     this.customSchema = customSchema
-    this.parser = new HL7v2(customSchema)
+    this.parser = new Parser(customSchema)
+    this.generator = new Generator(customSchema)
   }
 
   /**
@@ -57,7 +59,7 @@ export class HL7Service {
    */
   generateMessage(jsonObject: any): string {
     try {
-      return this.parser.generate(jsonObject)
+      return this.generator.generate(jsonObject)
     } catch (error) {
       throw new Error(`Failed to generate HL7 message: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
@@ -76,8 +78,8 @@ export class HL7Service {
       
       if (validationSchema) {
         // Create a new parser instance with the validation schema
-        const validator = new HL7v2(validationSchema)
-        
+        const validator = new Parser(validationSchema)
+
         // Try to parse - this will throw if validation fails
         const hl7Text = this.generateMessage(jsonObject)
         validator.parse(hl7Text)
