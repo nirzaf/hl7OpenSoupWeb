@@ -24,13 +24,15 @@ export function MessageDashboard() {
   const loadMessages = async () => {
     try {
       const response = await fetch("/api/messages")
-      const data = await response.json()
-      setMessages(data)
+      const result = await response.json()
+      const data = result.data || result // Handle both paginated and direct array responses
+      setMessages(Array.isArray(data) ? data : [])
       if (data.length > 0) {
         setSelectedMessage(data[0])
       }
     } catch (error) {
       console.error("Failed to load messages:", error)
+      setMessages([]) // Ensure messages is always an array
     } finally {
       setIsLoading(false)
     }
@@ -56,18 +58,19 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
         body: JSON.stringify(newMessage),
       })
       const created = await response.json()
-      setMessages([created, ...messages])
+      const currentMessages = Array.isArray(messages) ? messages : []
+      setMessages([created, ...currentMessages])
       setSelectedMessage(created)
     } catch (error) {
       console.error("Failed to create message:", error)
     }
   }
 
-  const filteredMessages = messages.filter(
+  const filteredMessages = Array.isArray(messages) ? messages.filter(
     (message) =>
       message.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (message.metadata?.messageType || (message as any).messageType || '').toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  ) : []
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Loading messages...</div>
@@ -80,7 +83,7 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Messages ({messages.length})</CardTitle>
+              <CardTitle>Messages ({Array.isArray(messages) ? messages.length : 0})</CardTitle>
               <div className="flex space-x-2">
                 <Button size="sm" onClick={handleCreateMessage}>
                   <Plus className="h-4 w-4" />
@@ -142,7 +145,8 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
               <MessageEditor
                 message={selectedMessage}
                 onSave={(updatedMessage) => {
-                  setMessages(messages.map((m) => (m._id === updatedMessage._id ? updatedMessage : m)))
+                  const currentMessages = Array.isArray(messages) ? messages : []
+                  setMessages(currentMessages.map((m) => (m._id === updatedMessage._id ? updatedMessage : m)))
                   setSelectedMessage(updatedMessage)
                 }}
               />
