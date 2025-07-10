@@ -1,4 +1,4 @@
-import { Parser, Generator } from '@ehr/hl7-v2'
+import * as HL7 from 'hl7-standard'
 import type { HL7Message, ValidationError, HL7Schema } from '@/types/hl7'
 
 export interface ParsedHL7Message {
@@ -20,14 +20,10 @@ export interface ValidationResult {
 }
 
 export class HL7Service {
-  private parser: any
-  private generator: any
   private customSchema?: any
 
   constructor(customSchema?: any) {
     this.customSchema = customSchema
-    this.parser = new Parser(customSchema)
-    this.generator = new Generator(customSchema)
   }
 
   /**
@@ -37,14 +33,14 @@ export class HL7Service {
     try {
       // Clean the HL7 text - remove extra whitespace and normalize line endings
       const cleanedText = hl7Text.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-      
-      // Parse using @ehr/hl7-v2
-      const parsed = this.parser.parse(cleanedText)
-      
+
+      // Parse using hl7-standard
+      const parsed = HL7.parse(cleanedText)
+
       // Extract metadata from MSH segment
       const msh = parsed.MSH || parsed.segments?.MSH
       const metadata = this.extractMetadata(msh)
-      
+
       return {
         segments: parsed,
         metadata
@@ -59,7 +55,7 @@ export class HL7Service {
    */
   generateMessage(jsonObject: any): string {
     try {
-      return this.generator.generate(jsonObject)
+      return HL7.serialize(jsonObject)
     } catch (error) {
       throw new Error(`Failed to generate HL7 message: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
@@ -77,12 +73,9 @@ export class HL7Service {
       const validationSchema = schema || this.customSchema
       
       if (validationSchema) {
-        // Create a new parser instance with the validation schema
-        const validator = new Parser(validationSchema)
-
         // Try to parse - this will throw if validation fails
         const hl7Text = this.generateMessage(jsonObject)
-        validator.parse(hl7Text)
+        HL7.parse(hl7Text)
       }
 
       // Additional custom validation logic can be added here
