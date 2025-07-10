@@ -1,4 +1,3 @@
-import * as HL7 from 'hl7-standard'
 import type { HL7Message, ValidationError, HL7Schema } from '@/types/hl7'
 
 export interface ParsedHL7Message {
@@ -34,15 +33,24 @@ export class HL7Service {
       // Clean the HL7 text - remove extra whitespace and normalize line endings
       const cleanedText = hl7Text.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n')
 
-      // Parse using hl7-standard
-      const parsed = HL7.parse(cleanedText)
+      // Simple HL7 parsing - split by line breaks and parse each segment
+      const lines = cleanedText.split('\n').filter(line => line.trim())
+      const segments: Record<string, any> = {}
+
+      for (const line of lines) {
+        const fields = line.split('|')
+        if (fields.length > 0) {
+          const segmentType = fields[0]
+          segments[segmentType] = fields
+        }
+      }
 
       // Extract metadata from MSH segment
-      const msh = parsed.MSH || parsed.segments?.MSH
+      const msh = segments.MSH
       const metadata = this.extractMetadata(msh)
 
       return {
-        segments: parsed,
+        segments,
         metadata
       }
     } catch (error) {
@@ -55,7 +63,26 @@ export class HL7Service {
    */
   generateMessage(jsonObject: any): string {
     try {
-      return HL7.serialize(jsonObject)
+      // Simple HL7 generation - convert segments back to pipe-delimited format
+      const lines: string[] = []
+
+      if (jsonObject.segments) {
+        // Handle nested segments structure
+        for (const [segmentType, fields] of Object.entries(jsonObject.segments)) {
+          if (Array.isArray(fields)) {
+            lines.push(fields.join('|'))
+          }
+        }
+      } else {
+        // Handle flat structure
+        for (const [segmentType, fields] of Object.entries(jsonObject)) {
+          if (Array.isArray(fields)) {
+            lines.push(fields.join('|'))
+          }
+        }
+      }
+
+      return lines.join('\n')
     } catch (error) {
       throw new Error(`Failed to generate HL7 message: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
@@ -75,7 +102,7 @@ export class HL7Service {
       if (validationSchema) {
         // Try to parse - this will throw if validation fails
         const hl7Text = this.generateMessage(jsonObject)
-        HL7.parse(hl7Text)
+        this.parseMessage(hl7Text)
       }
 
       // Additional custom validation logic can be added here
@@ -133,13 +160,26 @@ export class HL7Service {
    */
   private extractMetadata(msh: any): ParsedHL7Message['metadata'] {
     try {
+      // MSH segment is an array: [MSH, field_separator, encoding_chars, sending_app, sending_facility, ...]
+      if (Array.isArray(msh) && msh.length > 0) {
+        return {
+          messageType: msh[9] || 'Unknown', // Message type is typically in field 9
+          versionId: msh[12] || '2.5', // Version ID is typically in field 12
+          sendingFacility: msh[4] || 'Unknown', // Sending facility is in field 4
+          receivingFacility: msh[6] || 'Unknown', // Receiving facility is in field 6
+          timestamp: this.parseHL7DateTime(msh[7]), // Timestamp is in field 7
+          controlId: msh[10] || 'Unknown' // Control ID is in field 10
+        }
+      }
+
+      // Fallback for object format
       return {
-        messageType: msh?.['MSH.9']?.['MSH.9.1'] || msh?.['9']?.['1'] || 'Unknown',
-        versionId: msh?.['MSH.12'] || msh?.['12'] || '2.5',
-        sendingFacility: msh?.['MSH.4'] || msh?.['4'] || 'Unknown',
-        receivingFacility: msh?.['MSH.6'] || msh?.['6'] || 'Unknown',
-        timestamp: this.parseHL7DateTime(msh?.['MSH.7'] || msh?.['7']),
-        controlId: msh?.['MSH.10'] || msh?.['10'] || 'Unknown'
+        messageType: msh?.messageType || msh?.['9'] || 'Unknown',
+        versionId: msh?.versionId || msh?.['12'] || '2.5',
+        sendingFacility: msh?.sendingFacility || msh?.['4'] || 'Unknown',
+        receivingFacility: msh?.receivingFacility || msh?.['6'] || 'Unknown',
+        timestamp: this.parseHL7DateTime(msh?.timestamp || msh?.['7']),
+        controlId: msh?.controlId || msh?.['10'] || 'Unknown'
       }
     } catch (error) {
       // Return default metadata if extraction fails

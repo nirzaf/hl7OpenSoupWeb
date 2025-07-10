@@ -71,9 +71,6 @@ importers:
       date-fns:
         specifier: 4.1.0
         version: 4.1.0
-      hl7-standard:
-        specifier: ^1.0.4
-        version: 1.0.4
       json-2-csv:
         specifier: ^5.5.9
         version: 5.5.9
@@ -1286,9 +1283,6 @@ packages:
 
   highlightjs-vue@1.0.0:
     resolution: {integrity: sha512-PDEfEF102G23vHmPhLyPboFCD+BkMGu+GuJe2d9/eH4FsCwvgBpnc9n0pGE+ffKdph38s6foEZiEjdgHdzp+IA==}
-
-  hl7-standard@1.0.4:
-    resolution: {integrity: sha512-Dk8U0Q84HrQ5HCS3VXcay3ILrKOqQ1pprHHIxPaq/byi2zrTUwdP+tIv0sF+SI/l4bkET3EnN8yuGuQmOdHvuw==}
 
   is-alphabetical@1.0.4:
     resolution: {integrity: sha512-DwzsA04LQ10FHTZuL0/grVDk4rFoVH1pjAToYwBrHSxcrBIGQuXrQMtD5U1b0U2XVgKZCTLLP8u2Qxqhy3l2Vg==}
@@ -2906,8 +2900,6 @@ snapshots:
   highlight.js@10.7.3: {}
 
   highlightjs-vue@1.0.0: {}
-
-  hl7-standard@1.0.4: {}
 
   is-alphabetical@1.0.4: {}
 

@@ -30,7 +30,6 @@
     "clsx": "2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
-    "hl7-standard": "^1.0.4",
     "json-2-csv": "^5.5.9",
     "lucide-react": "0.468.0",
     "mongodb": "^6.17.0",

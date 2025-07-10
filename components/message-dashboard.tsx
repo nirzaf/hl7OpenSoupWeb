@@ -43,8 +43,9 @@ export function MessageDashboard() {
 EVN||${new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "")}
 PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^A|19800101|M||C|1200 N ELM STREET^^GREENSBORO^NC^27401-1020|GL|(919)379-1212|(919)271-3434~(919)277-3114||S||PATID12345001^2^M10^ADT1^AN^A|123456789|9-87654^NC`
 
+    const currentMessages = Array.isArray(messages) ? messages : []
     const newMessage = {
-      name: `New Message ${messages.length + 1}`,
+      name: `New Message ${currentMessages.length + 1}`,
       rawMessage,
       metadata: {
         tags: ['new']
@@ -58,7 +59,6 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
         body: JSON.stringify(newMessage),
       })
       const created = await response.json()
-      const currentMessages = Array.isArray(messages) ? messages : []
       setMessages([created, ...currentMessages])
       setSelectedMessage(created)
     } catch (error) {
@@ -67,9 +67,13 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
   }
 
   const filteredMessages = Array.isArray(messages) ? messages.filter(
-    (message) =>
-      message.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (message.metadata?.messageType || (message as any).messageType || '').toLowerCase().includes(searchTerm.toLowerCase()),
+    (message) => {
+      if (!message || typeof message !== 'object') return false
+      const messageName = message.name || ''
+      const messageType = message.metadata?.messageType || (message as any).messageType || ''
+      return messageName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             messageType.toLowerCase().includes(searchTerm.toLowerCase())
+    }
   ) : []
 
   if (isLoading) {
