@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Save, Undo, Redo, Eye, Code, AlertTriangle } from "lucide-react"
 import { HL7SyntaxHighlighter, HL7_SYNTAX_CSS } from "@/lib/hl7-syntax-highlighter"
+import { HL7Preview } from "@/components/hl7-preview"
 
 interface MessageEditorProps {
   message: HL7Message
@@ -197,11 +199,9 @@ export function MessageEditor({ message, onSave }: MessageEditorProps) {
             </TabsContent>
 
             <TabsContent value="preview" className="mt-4">
-              <div className="border rounded-lg p-4 min-h-[400px] bg-muted/50">
-                <pre className="font-mono text-sm whitespace-pre-wrap">
-                  {rawContent}
-                </pre>
-              </div>
+              <ScrollArea className="h-[600px] w-full">
+                <HL7Preview content={rawContent} />
+              </ScrollArea>
             </TabsContent>
 
             <TabsContent value="highlighted" className="mt-4">

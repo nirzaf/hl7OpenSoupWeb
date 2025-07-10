@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Clock, User, Building, Hash, Eye, Code, TreePine } from "lucide-react"
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { HL7Preview } from "@/components/hl7-preview"
 
 interface MessageViewerProps {
   message: HL7Message
@@ -256,8 +257,8 @@ export function MessageViewer({ message }: MessageViewerProps) {
             </TabsList>
 
             <TabsContent value="structured" className="mt-4">
-              <ScrollArea className="h-96 w-full rounded border p-4">
-                {renderStructuredView()}
+              <ScrollArea className="h-96 w-full">
+                <HL7Preview content={rawContent} />
               </ScrollArea>
             </TabsContent>
 
