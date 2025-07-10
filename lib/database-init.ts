@@ -222,6 +222,46 @@ async function seedDefaultData(db: any) {
           ],
           createdAt: new Date(),
           updatedAt: new Date()
+        },
+        {
+          name: 'administrative_sex',
+          description: 'HL7 Administrative Sex codes (PID.8)',
+          data: [
+            { key: 'M', value: 'Male' },
+            { key: 'F', value: 'Female' },
+            { key: 'O', value: 'Other' },
+            { key: 'U', value: 'Unknown' },
+            { key: 'A', value: 'Ambiguous' },
+            { key: 'N', value: 'Not applicable' }
+          ],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          name: 'processing_id',
+          description: 'HL7 Processing ID codes (MSH.11)',
+          data: [
+            { key: 'P', value: 'Production' },
+            { key: 'T', value: 'Training' },
+            { key: 'D', value: 'Debugging' }
+          ],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          name: 'hl7_versions',
+          description: 'HL7 Version ID codes (MSH.12)',
+          data: [
+            { key: '2.3', value: 'HL7 Version 2.3' },
+            { key: '2.4', value: 'HL7 Version 2.4' },
+            { key: '2.5', value: 'HL7 Version 2.5' },
+            { key: '2.5.1', value: 'HL7 Version 2.5.1' },
+            { key: '2.6', value: 'HL7 Version 2.6' },
+            { key: '2.7', value: 'HL7 Version 2.7' },
+            { key: '2.8', value: 'HL7 Version 2.8' }
+          ],
+          createdAt: new Date(),
+          updatedAt: new Date()
         }
       ]
       

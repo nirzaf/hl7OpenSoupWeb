@@ -1,10 +1,11 @@
 import { Suspense } from "react"
 import { MessageDashboard } from "@/components/message-dashboard"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Activity, Database, FileText, Settings } from "lucide-react"
+import { Activity, Database, FileText, Settings, BarChart3 } from "lucide-react"
 import { ValidationConfiguration } from "@/components/validation-configuration"
 import { DataTransformation } from "@/components/data-transformation"
 import { RulesEngine } from "@/components/rules-engine"
+import { AnalyticsWrapper } from "@/components/analytics-wrapper"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function HomePage() {
@@ -31,10 +32,14 @@ export default function HomePage() {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="messages" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="messages" className="flex items-center space-x-2">
               <FileText className="h-4 w-4" />
               <span>Messages</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center space-x-2">
+              <BarChart3 className="h-4 w-4" />
+              <span>Analytics</span>
             </TabsTrigger>
             <TabsTrigger value="validation" className="flex items-center space-x-2">
               <Settings className="h-4 w-4" />
@@ -53,6 +58,12 @@ export default function HomePage() {
           <TabsContent value="messages">
             <Suspense fallback={<div>Loading messages...</div>}>
               <MessageDashboard />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <Suspense fallback={<div>Loading analytics...</div>}>
+              <AnalyticsWrapper />
             </Suspense>
           </TabsContent>
 

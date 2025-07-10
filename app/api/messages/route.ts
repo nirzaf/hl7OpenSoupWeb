@@ -142,3 +142,49 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: "Message ID is required" }, { status: 400 })
+    }
+
+    const body = await request.json()
+    const collection = await getCollection("messages")
+
+    // Update the message
+    const result = await collection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          ...body,
+          updatedAt: new Date()
+        }
+      }
+    )
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: "Message not found" }, { status: 404 })
+    }
+
+    // Fetch the updated message
+    const updatedMessage = await collection.findOne({ _id: new ObjectId(id) })
+
+    if (!updatedMessage) {
+      return NextResponse.json({ error: "Failed to fetch updated message" }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      data: {
+        ...updatedMessage,
+        _id: updatedMessage._id.toString()
+      }
+    })
+  } catch (error) {
+    console.error("Failed to update message:", error)
+    return NextResponse.json({ error: "Failed to update message" }, { status: 500 })
+  }
+}

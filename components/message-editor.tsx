@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Save, Undo, Redo, Eye, Code, AlertTriangle } from "lucide-react"
 import { HL7SyntaxHighlighter, HL7_SYNTAX_CSS } from "@/lib/hl7-syntax-highlighter"
 import { HL7Preview } from "@/components/hl7-preview"
+import { HL7FieldAssistant } from "@/components/hl7-field-assistant"
 
 interface MessageEditorProps {
   message: HL7Message

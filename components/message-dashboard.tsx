@@ -4,6 +4,9 @@ import { useState, useEffect, useRef } from "react"
 import { MessageList } from "./message-list"
 import { MessageViewer } from "./message-viewer"
 import { MessageEditor } from "./message-editor"
+import { MessageComparison } from "./message-comparison"
+import { SampleMessagesBrowser } from "./sample-messages-browser"
+import { AdvancedSearch, type SearchCriteria } from "./advanced-search"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Search, Filter, Download, Upload, FileText, X, Database } from "lucide-react"
+import { Plus, Search, Filter, Download, Upload, FileText, X, Database, ArrowLeftRight, BookOpen } from "lucide-react"
 import type { HL7Message } from "@/types/hl7"
 
 export function MessageDashboard() {
@@ -23,15 +26,40 @@ export function MessageDashboard() {
   const [uploadedContent, setUploadedContent] = useState("")
   const [uploadedFileName, setUploadedFileName] = useState("")
   const [isDragOver, setIsDragOver] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadMessages()
   }, [])
 
-  const loadMessages = async () => {
+  const loadMessages = async (searchCriteria?: SearchCriteria) => {
     try {
-      const response = await fetch("/api/messages")
+      setIsSearching(!!searchCriteria)
+
+      let url = "/api/messages"
+      const params = new URLSearchParams()
+
+      if (searchCriteria) {
+        if (searchCriteria.generalSearch) params.append('search', searchCriteria.generalSearch)
+        if (searchCriteria.patientName) params.append('patientName', searchCriteria.patientName)
+        if (searchCriteria.patientId) params.append('patientId', searchCriteria.patientId)
+        if (searchCriteria.messageType) params.append('messageType', searchCriteria.messageType)
+        if (searchCriteria.sendingFacility) params.append('sendingFacility', searchCriteria.sendingFacility)
+        if (searchCriteria.receivingFacility) params.append('receivingFacility', searchCriteria.receivingFacility)
+        if (searchCriteria.messageControlId) params.append('messageControlId', searchCriteria.messageControlId)
+        if (searchCriteria.tags) params.append('tags', searchCriteria.tags.join(','))
+        if (searchCriteria.dateFrom) params.append('dateFrom', searchCriteria.dateFrom.toISOString())
+        if (searchCriteria.dateTo) params.append('dateTo', searchCriteria.dateTo.toISOString())
+        if (searchCriteria.isValid !== undefined) params.append('isValid', searchCriteria.isValid.toString())
+        if (searchCriteria.segmentTypes) params.append('segmentTypes', searchCriteria.segmentTypes.join(','))
+      }
+
+      if (params.toString()) {
+        url += `?${params.toString()}`
+      }
+
+      const response = await fetch(url)
       const result = await response.json()
       const data = result.data || result // Handle both paginated and direct array responses
       setMessages(Array.isArray(data) ? data : [])
@@ -43,6 +71,7 @@ export function MessageDashboard() {
       setMessages([]) // Ensure messages is always an array
     } finally {
       setIsLoading(false)
+      setIsSearching(false)
     }
   }
 
@@ -200,9 +229,42 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
                 <Button size="sm" onClick={handleCreateMessage}>
                   <Plus className="h-4 w-4" />
                 </Button>
-                <Button size="sm" variant="outline" onClick={handleLoadSamples}>
-                  <Database className="h-4 w-4" />
-                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <BookOpen className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-6xl max-h-[90vh]">
+                    <DialogHeader>
+                      <DialogTitle>Sample HL7 Messages Library</DialogTitle>
+                    </DialogHeader>
+                    <SampleMessagesBrowser
+                      onImportMessage={(sampleMessage) => {
+                        const currentMessages = Array.isArray(messages) ? messages : []
+                        const newMessage = {
+                          name: sampleMessage.name,
+                          rawMessage: sampleMessage.rawMessage,
+                          metadata: {
+                            messageType: sampleMessage.messageType,
+                            tags: [...sampleMessage.tags, 'sample']
+                          }
+                        }
+
+                        fetch("/api/messages", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(newMessage),
+                        }).then(response => response.json())
+                          .then(created => {
+                            setMessages([created, ...currentMessages])
+                            setSelectedMessage(created)
+                          })
+                          .catch(error => console.error("Failed to import sample message:", error))
+                      }}
+                    />
+                  </DialogContent>
+                </Dialog>
                 <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" variant="outline">
@@ -309,13 +371,20 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
               </div>
             </div>
             <div className="flex space-x-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search messages..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
+              <div className="flex-1 space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search messages..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+                <AdvancedSearch
+                  onSearch={(criteria) => loadMessages(criteria)}
+                  onClear={() => loadMessages()}
+                  isLoading={isSearching}
                 />
               </div>
               <Button size="sm" variant="outline">
@@ -342,6 +411,7 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
                 <TabsTrigger value="view">View</TabsTrigger>
                 <TabsTrigger value="edit">Edit</TabsTrigger>
                 <TabsTrigger value="validate">Validate</TabsTrigger>
+                <TabsTrigger value="compare">Compare</TabsTrigger>
               </TabsList>
               <div className="flex space-x-2">
                 <Button size="sm" variant="outline">
@@ -388,6 +458,13 @@ PID|1||PATID1234^5^M11^ADT1^MR^UNIVERSITY_HOSPITAL~123456789^^^USA^SS||DOE^JOHN^
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="compare">
+              <MessageComparison
+                messages={Array.isArray(messages) ? messages : []}
+                initialMessage1={selectedMessage}
+              />
             </TabsContent>
           </Tabs>
         ) : (

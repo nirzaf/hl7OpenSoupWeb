@@ -12,6 +12,7 @@ import { Clock, User, Building, Hash, Eye, Code, TreePine } from "lucide-react"
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { HL7Preview } from "@/components/hl7-preview"
+import { InteractiveHL7Viewer } from "@/components/interactive-hl7-viewer"
 
 interface MessageViewerProps {
   message: HL7Message
@@ -240,21 +241,29 @@ export function MessageViewer({ message }: MessageViewerProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="structured" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs defaultValue="interactive" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="interactive" className="flex items-center space-x-2">
+                <TreePine className="h-4 w-4" />
+                <span>Interactive</span>
+              </TabsTrigger>
               <TabsTrigger value="structured" className="flex items-center space-x-2">
                 <TreePine className="h-4 w-4" />
-                <span>Structured View</span>
+                <span>Structured</span>
               </TabsTrigger>
               <TabsTrigger value="raw" className="flex items-center space-x-2">
                 <Eye className="h-4 w-4" />
-                <span>Raw View</span>
+                <span>Raw</span>
               </TabsTrigger>
               <TabsTrigger value="highlighted" className="flex items-center space-x-2">
                 <Code className="h-4 w-4" />
-                <span>Syntax Highlighted</span>
+                <span>Highlighted</span>
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="interactive" className="mt-4">
+              <InteractiveHL7Viewer message={message} />
+            </TabsContent>
 
             <TabsContent value="structured" className="mt-4">
               <ScrollArea className="h-96 w-full">
