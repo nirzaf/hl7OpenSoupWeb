@@ -27,13 +27,17 @@ export function MessageEditor({ message, onSave }: MessageEditorProps) {
   const rawContent = editedMessage.rawMessage || (editedMessage as any).content || ''
 
   useEffect(() => {
-    // Inject CSS for syntax highlighting
-    const styleElement = document.createElement('style')
-    styleElement.textContent = HL7_SYNTAX_CSS
-    document.head.appendChild(styleElement)
+    // Only inject CSS on client side to prevent hydration mismatch
+    if (typeof window !== 'undefined') {
+      const styleElement = document.createElement('style')
+      styleElement.textContent = HL7_SYNTAX_CSS
+      document.head.appendChild(styleElement)
 
-    return () => {
-      document.head.removeChild(styleElement)
+      return () => {
+        if (document.head.contains(styleElement)) {
+          document.head.removeChild(styleElement)
+        }
+      }
     }
   }, [])
 
